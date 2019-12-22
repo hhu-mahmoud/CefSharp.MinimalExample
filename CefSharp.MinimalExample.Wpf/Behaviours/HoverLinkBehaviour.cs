@@ -1,20 +1,22 @@
-﻿using CefSharp.Wpf;
-using System.Windows;
-using System.Windows.Interactivity;
-using System;
-
-namespace CefSharp.MinimalExample.Wpf.Behaviours
+﻿namespace CefSharp.MinimalExample.Wpf.Behaviours
 {
+    using System;
+    using System.Linq;
+    using System.Windows;
+    using System.Windows.Interactivity;
+
+    using CefSharp.Wpf;
+
     public class HoverLinkBehaviour : Behavior<ChromiumWebBrowser>
     {
+        #region constants
+
         // Using a DependencyProperty as the backing store for HoverLink. This enables animation, styling, binding, etc...
         public static readonly DependencyProperty HoverLinkProperty = DependencyProperty.Register("HoverLink", typeof(string), typeof(HoverLinkBehaviour), new PropertyMetadata(string.Empty));
 
-        public string HoverLink
-        {
-            get { return (string)GetValue(HoverLinkProperty); }
-            set { SetValue(HoverLinkProperty, value); }
-        }
+        #endregion
+
+        #region methods
 
         protected override void OnAttached()
         {
@@ -25,11 +27,23 @@ namespace CefSharp.MinimalExample.Wpf.Behaviours
         {
             AssociatedObject.StatusMessage -= OnStatusMessageChanged;
         }
-        
+
         private void OnStatusMessageChanged(object sender, StatusMessageEventArgs e)
         {
             var chromiumWebBrowser = sender as ChromiumWebBrowser;
-            chromiumWebBrowser.Dispatcher.BeginInvoke((Action)(() => HoverLink = e.Value));
+            chromiumWebBrowser?.Dispatcher?.BeginInvoke((Action)(() => HoverLink = e.Value));
         }
+
+        #endregion
+
+        #region properties
+
+        public string HoverLink
+        {
+            get => (string)GetValue(HoverLinkProperty);
+            set => SetValue(HoverLinkProperty, value);
+        }
+
+        #endregion
     }
 }

@@ -2,37 +2,42 @@
 //
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-using CefSharp.MinimalExample.WinForms.Controls;
-using CefSharp.WinForms;
-using System;
-using System.Windows.Forms;
-
 namespace CefSharp.MinimalExample.WinForms
 {
+    using System;
+    using System.Linq;
+    using System.Windows.Forms;
+
+    using CefSharp.WinForms;
+
+    using Controls;
+
+    using Properties;
+
     public partial class BrowserForm : Form
     {
-        private readonly ChromiumWebBrowser browser;
+        #region member vars
+
+        private readonly ChromiumWebBrowser _browser;
+
+        #endregion
+
+        #region constructors and destructors
 
         public BrowserForm()
         {
             InitializeComponent();
-
             Text = "CefSharp";
             WindowState = FormWindowState.Maximized;
-
-            browser = new ChromiumWebBrowser("www.google.com");
-            toolStripContainer.ContentPanel.Controls.Add(browser);
-
-            browser.IsBrowserInitializedChanged += OnIsBrowserInitializedChanged;
-            browser.LoadingStateChanged += OnLoadingStateChanged;
-            browser.ConsoleMessage += OnBrowserConsoleMessage;
-            browser.StatusMessage += OnBrowserStatusMessage;
-            browser.TitleChanged += OnBrowserTitleChanged;
-            browser.AddressChanged += OnBrowserAddressChanged;
-
-            var version = string.Format("Chromium: {0}, CEF: {1}, CefSharp: {2}",
-               Cef.ChromiumVersion, Cef.CefVersion, Cef.CefSharpVersion);
-
+            _browser = new ChromiumWebBrowser("www.google.com");
+            toolStripContainer.ContentPanel.Controls.Add(_browser);
+            _browser.IsBrowserInitializedChanged += OnIsBrowserInitializedChanged;
+            _browser.LoadingStateChanged += OnLoadingStateChanged;
+            _browser.ConsoleMessage += OnBrowserConsoleMessage;
+            _browser.StatusMessage += OnBrowserStatusMessage;
+            _browser.TitleChanged += OnBrowserTitleChanged;
+            _browser.AddressChanged += OnBrowserAddressChanged;
+            var version = $"Chromium: {Cef.ChromiumVersion}, CEF: {Cef.CefVersion}, CefSharp: {Cef.CefSharpVersion}";
 #if NETCOREAPP
             // .NET Core
             var environment = string.Format("Environment: {0}, Runtime: {1}",
@@ -41,22 +46,69 @@ namespace CefSharp.MinimalExample.WinForms
 #else
             // .NET Framework
             var bitness = Environment.Is64BitProcess ? "x64" : "x86";
-            var environment = String.Format("Environment: {0}", bitness);
+            var environment = $"Environment: {bitness}";
 #endif
-
-            DisplayOutput(string.Format("{0}, {1}", version, environment));
+            DisplayOutput($"{version}, {environment}");
         }
 
-        private void OnIsBrowserInitializedChanged(object sender, EventArgs e)
-        {
-            var b = ((ChromiumWebBrowser)sender);
+        #endregion
 
-            this.InvokeOnUiThreadIfRequired(() => b.Focus());
+        #region methods
+
+        private void BackButtonClick(object sender, EventArgs e)
+        {
+            _browser.Back();
+        }
+
+        private void DisplayOutput(string output)
+        {
+            this.InvokeOnUiThreadIfRequired(() => outputLabel.Text = output);
+        }
+
+        private void ExitMenuItemClick(object sender, EventArgs e)
+        {
+            _browser.Dispose();
+            Cef.Shutdown();
+            Close();
+        }
+
+        private void ForwardButtonClick(object sender, EventArgs e)
+        {
+            _browser.Forward();
+        }
+
+        private void GoButtonClick(object sender, EventArgs e)
+        {
+            LoadUrl(urlTextBox.Text);
+        }
+
+        private void HandleToolStripLayout(object sender, LayoutEventArgs e)
+        {
+            HandleToolStripLayout();
+        }
+
+        private void HandleToolStripLayout()
+        {
+            var width = toolStrip1.Items.Cast<ToolStripItem>().Where(item => item != urlTextBox).Aggregate(toolStrip1.Width, (current, item) => current - (item.Width - item.Margin.Horizontal));
+            urlTextBox.Width = Math.Max(0, width - urlTextBox.Margin.Horizontal - 18);
+        }
+
+        private void LoadUrl(string url)
+        {
+            if (Uri.IsWellFormedUriString(url, UriKind.RelativeOrAbsolute))
+            {
+                _browser.Load(url);
+            }
+        }
+
+        private void OnBrowserAddressChanged(object sender, AddressChangedEventArgs args)
+        {
+            this.InvokeOnUiThreadIfRequired(() => urlTextBox.Text = args.Address);
         }
 
         private void OnBrowserConsoleMessage(object sender, ConsoleMessageEventArgs args)
         {
-            DisplayOutput(string.Format("Line: {0}, Source: {1}, Message: {2}", args.Line, args.Source, args.Message));
+            DisplayOutput($"Line: {args.Line}, Source: {args.Source}, Message: {args.Message}");
         }
 
         private void OnBrowserStatusMessage(object sender, StatusMessageEventArgs args)
@@ -64,22 +116,22 @@ namespace CefSharp.MinimalExample.WinForms
             this.InvokeOnUiThreadIfRequired(() => statusLabel.Text = args.Value);
         }
 
-        private void OnLoadingStateChanged(object sender, LoadingStateChangedEventArgs args)
-        {
-            SetCanGoBack(args.CanGoBack);
-            SetCanGoForward(args.CanGoForward);
-
-            this.InvokeOnUiThreadIfRequired(() => SetIsLoading(!args.CanReload));
-        }
-
         private void OnBrowserTitleChanged(object sender, TitleChangedEventArgs args)
         {
             this.InvokeOnUiThreadIfRequired(() => Text = args.Title);
         }
 
-        private void OnBrowserAddressChanged(object sender, AddressChangedEventArgs args)
+        private void OnIsBrowserInitializedChanged(object sender, EventArgs e)
         {
-            this.InvokeOnUiThreadIfRequired(() => urlTextBox.Text = args.Address);
+            var b = (ChromiumWebBrowser)sender;
+            this.InvokeOnUiThreadIfRequired(() => b.Focus());
+        }
+
+        private void OnLoadingStateChanged(object sender, LoadingStateChangedEventArgs args)
+        {
+            SetCanGoBack(args.CanGoBack);
+            SetCanGoForward(args.CanGoForward);
+            this.InvokeOnUiThreadIfRequired(() => SetIsLoading(!args.CanReload));
         }
 
         private void SetCanGoBack(bool canGoBack)
@@ -94,59 +146,14 @@ namespace CefSharp.MinimalExample.WinForms
 
         private void SetIsLoading(bool isLoading)
         {
-            goButton.Text = isLoading ?
-                "Stop" :
-                "Go";
-            goButton.Image = isLoading ?
-                Properties.Resources.nav_plain_red :
-                Properties.Resources.nav_plain_green;
-
+            goButton.Text = isLoading ? "Stop" : "Go";
+            goButton.Image = isLoading ? Resources.nav_plain_red : Resources.nav_plain_green;
             HandleToolStripLayout();
         }
 
-        public void DisplayOutput(string output)
+        private void ShowDevToolsMenuItemClick(object sender, EventArgs e)
         {
-            this.InvokeOnUiThreadIfRequired(() => outputLabel.Text = output);
-        }
-
-        private void HandleToolStripLayout(object sender, LayoutEventArgs e)
-        {
-            HandleToolStripLayout();
-        }
-
-        private void HandleToolStripLayout()
-        {
-            var width = toolStrip1.Width;
-            foreach (ToolStripItem item in toolStrip1.Items)
-            {
-                if (item != urlTextBox)
-                {
-                    width -= item.Width - item.Margin.Horizontal;
-                }
-            }
-            urlTextBox.Width = Math.Max(0, width - urlTextBox.Margin.Horizontal - 18);
-        }
-
-        private void ExitMenuItemClick(object sender, EventArgs e)
-        {
-            browser.Dispose();
-            Cef.Shutdown();
-            Close();
-        }
-
-        private void GoButtonClick(object sender, EventArgs e)
-        {
-            LoadUrl(urlTextBox.Text);
-        }
-
-        private void BackButtonClick(object sender, EventArgs e)
-        {
-            browser.Back();
-        }
-
-        private void ForwardButtonClick(object sender, EventArgs e)
-        {
-            browser.Forward();
+            _browser.ShowDevTools();
         }
 
         private void UrlTextBoxKeyUp(object sender, KeyEventArgs e)
@@ -155,21 +162,19 @@ namespace CefSharp.MinimalExample.WinForms
             {
                 return;
             }
-
             LoadUrl(urlTextBox.Text);
         }
 
-        private void LoadUrl(string url)
+        #endregion
+
+        #region properties
+
+        public sealed override string Text
         {
-            if (Uri.IsWellFormedUriString(url, UriKind.RelativeOrAbsolute))
-            {
-                browser.Load(url);
-            }
+            get => base.Text;
+            set => base.Text = value;
         }
 
-        private void ShowDevToolsMenuItemClick(object sender, EventArgs e)
-        {
-            browser.ShowDevTools();
-        }
+        #endregion
     }
 }

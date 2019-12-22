@@ -2,13 +2,16 @@
 //
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-using System;
-using System.Windows.Forms;
-
 namespace CefSharp.MinimalExample.WinForms.Controls
 {
+    using System;
+    using System.Linq;
+    using System.Windows.Forms;
+
     public static class ControlExtensions
     {
+        #region methods
+
         /// <summary>
         /// Executes the Action asynchronously on the UI thread, does not block execution on the calling thread.
         /// </summary>
@@ -23,7 +26,6 @@ namespace CefSharp.MinimalExample.WinForms.Controls
             {
                 return;
             }
-
             if (control.InvokeRequired)
             {
                 control.BeginInvoke(action);
@@ -33,5 +35,7 @@ namespace CefSharp.MinimalExample.WinForms.Controls
                 action.Invoke();
             }
         }
+
+        #endregion
     }
 }

@@ -1,11 +1,15 @@
-﻿using System.Windows.Interactivity;
-using System.Windows.Controls;
-using System.Windows.Input;
-
-namespace CefSharp.MinimalExample.Wpf.Behaviours
+﻿namespace CefSharp.MinimalExample.Wpf.Behaviours
 {
+    using System;
+    using System.Linq;
+    using System.Windows.Controls;
+    using System.Windows.Input;
+    using System.Windows.Interactivity;
+
     public class TextBoxBindingUpdateOnEnterBehaviour : Behavior<TextBox>
     {
+        #region methods
+
         protected override void OnAttached()
         {
             AssociatedObject.KeyDown += OnTextBoxKeyDown;
@@ -16,13 +20,16 @@ namespace CefSharp.MinimalExample.Wpf.Behaviours
             AssociatedObject.KeyDown -= OnTextBoxKeyDown;
         }
 
-        private void OnTextBoxKeyDown(object sender, KeyEventArgs e)
+        private static void OnTextBoxKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if (e.Key != Key.Enter)
             {
-                var txtBox = sender as TextBox;
-                txtBox.GetBindingExpression(TextBox.TextProperty).UpdateSource();
+                return;
             }
+            var txtBox = sender as TextBox;
+            txtBox?.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
         }
+
+        #endregion
     }
 }
