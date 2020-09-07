@@ -17,23 +17,40 @@ namespace CefSharp.MinimalExample.OffScreen
     {
         #region constants
 
-        private static ChromiumWebBrowser _browser;
-
-        #endregion
-
-        #region methods
-
-        public static void Main(string[] args)
+        public static int Main(string[] args)
         {
             const string TestUrl = "https://www.google.com/";
             Console.WriteLine("This example application will load {0}, take a screenshot, and save it to your desktop.", TestUrl);
             Console.WriteLine("You may see Chromium debugging output, please wait...");
             Console.WriteLine();
-            var settings = new CefSettings
+
+#if NETCOREAPP
+            //We are using our current exe as the BrowserSubProcess
+            //Multiple instances will be spawned to handle all the 
+            //Chromium proceses, render, gpu, network, plugin, etc.
+            var subProcessExe = new CefSharp.BrowserSubprocess.BrowserSubprocessExecutable();
+            var result = subProcessExe.Main(args);
+            if (result > 0)
+            {
+                return result;
+            }
+#endif
+
+            var settings = new CefSettings()
             {
                 //By default CefSharp will use an in-memory cache, you need to specify a Cache Folder to persist data
                 CachePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CefSharp\\Cache")
             };
+
+#if NETCOREAPP
+            //We use our Applications exe as the BrowserSubProcess, multiple copies
+            //will be spawned
+            //TODO: The OffScreen implementation is crashing on Exit (WPF/WinForms are working fine).
+            //So for now this is commented out and the old .Net CefSharp.BrowserSubProcess.exe
+            //is used.
+            //var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+            //settings.BrowserSubprocessPath = exePath;
+#endif
 
             //Perform dependency check to make sure all relevant resources are in our output directory.
             Cef.Initialize(settings, true, browserProcessHandler: null);
@@ -51,6 +68,8 @@ namespace CefSharp.MinimalExample.OffScreen
             // Clean up Chromium objects.  You need to call this in your application otherwise
             // you will get a crash when closing.
             Cef.Shutdown();
+
+            return 0;
         }
 
         private static void BrowserLoadingStateChanged(object sender, LoadingStateChangedEventArgs e)
@@ -60,13 +79,12 @@ namespace CefSharp.MinimalExample.OffScreen
             // (rather than an iframe within the main frame).
             if (e.IsLoading)
             {
-                return;
-            }
-            // Remove the load event handler, because we only want one snapshot of the initial page.
-            _browser.LoadingStateChanged -= BrowserLoadingStateChanged;
-            var scriptTask = _browser.EvaluateScriptAsync("document.getElementById('lst-ib').value = 'CefSharp Was Here!'");
-            scriptTask.ContinueWith(
-                t =>
+                // Remove the load event handler, because we only want one snapshot of the initial page.
+                browser.LoadingStateChanged -= BrowserLoadingStateChanged;
+
+                var scriptTask = browser.EvaluateScriptAsync("document.getElementById('lst-ib').value = 'CefSharp Was Here!'");
+
+                scriptTask.ContinueWith(t =>
                 {
                     //Give the browser a little time to render
                     Thread.Sleep(500);

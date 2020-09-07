@@ -12,7 +12,8 @@
 
         public App()
         {
-            var settings = new CefSettings
+#if !NETCOREAPP
+            var settings = new CefSettings()
             {
                 //By default CefSharp will use an in-memory cache, you need to specify a Cache Folder to persist data
                 CachePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CefSharp\\Cache")
@@ -20,10 +21,11 @@
 
             //Example of setting a command line argument
             //Enables WebRTC
-            settings.CefCommandLineArgs.Add("enable-media-stream", "1");
+            settings.CefCommandLineArgs.Add("enable-media-stream");
 
             //Perform dependency check to make sure all relevant resources are in our output directory.
-            Cef.Initialize(settings, true, browserProcessHandler: null);
+            Cef.Initialize(settings, performDependencyCheck: true, browserProcessHandler: null);
+#endif
         }
 
         #endregion
